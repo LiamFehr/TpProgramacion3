@@ -50,6 +50,7 @@ public class Todo {
     @JoinColumn(name = "persona_dni")
     private Persona responsable;
 
+	 public Todo() {}
 	 public Todo(String descripcion, Persona responsable) {
 	        this.descripcion = descripcion;
 	        this.responsable = responsable;

@@ -56,6 +56,9 @@ public class Persona {
 
     @OneToMany(mappedBy = "responsable", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Todo> tareas;
+    
+    public Persona() {}
+    
     public Persona(String nombre, String apellido, String dni) {
         this.nombre = nombre;
         this.apellido = apellido;
