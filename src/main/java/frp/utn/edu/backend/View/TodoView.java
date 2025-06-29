@@ -1,9 +1,11 @@
 package frp.utn.edu.backend.View;
 
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.combobox.ComboBox;
-import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.Route;
@@ -13,49 +15,93 @@ import frp.utn.edu.backend.Repository.PersonaRepository;
 import frp.utn.edu.backend.Repository.TodoReposirtory;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Route("")
 public class TodoView extends VerticalLayout {
 
     private final TodoReposirtory todoRepository;
-    private final PersonaRepository personaRepository;
-
-    private final Grid<Todo> grid = new Grid<>(Todo.class);
-    private final TextField descripcion = new TextField("Descripción de la tarea");
-    private final ComboBox<Persona> personaComboBox = new ComboBox<>("Responsable");
+    private final PersonaRepository personaRepository; 
+    private final ComboBox<Persona> personaCombo = new ComboBox<>("Responsable");
+    private final TextField taskField = new TextField("Tarea");
+    private final VerticalLayout tareasLayout = new VerticalLayout();
+    private final List<Todo> currentTareas = new ArrayList<>();
+    private final List<Checkbox> checkboxes = new ArrayList<>();
 
     @Autowired
-    public TodoView(TodoReposirtory TodoRepository, PersonaRepository personaRepository) {
-        this.todoRepository = TodoRepository;
+    public TodoView(TodoReposirtory todoRepository, PersonaRepository personaRepository) {
+        this.todoRepository = todoRepository;
         this.personaRepository = personaRepository;
 
-        personaComboBox.setItems(personaRepository.findAll());
-        personaComboBox.setItemLabelGenerator(p -> p.getNombre() + " " + p.getApellido());
+        
+        // Titulazo
+        H2 titulo = new H2("Todo");
 
-        Button addButton = new Button("Agregar Tarea", e -> {
-            if (descripcion.isEmpty() || personaComboBox.isEmpty()) {
-                Notification.show("Complete todos los campos");
+        // ComboBox de Personas
+        personaCombo.setItems(personaRepository.findAll());
+        personaCombo.setItemLabelGenerator(p -> p.getNombre() + " " + p.getApellido());
+        personaCombo.addValueChangeListener(ev -> actualizarLista(ev.getValue()));
+
+        // Botón Agregar
+        Button addButton = new Button("Agregar", click -> {
+            if (taskField.isEmpty() || personaCombo.isEmpty()) {
+                Notification.show("Complete la tarea y seleccione un responsable.");
                 return;
             }
-
-            Todo todo = new Todo(descripcion.getValue(), personaComboBox.getValue());
+            Todo todo = new Todo(taskField.getValue(), personaCombo.getValue());
             todoRepository.save(todo);
-            actualizarGrid();
-            descripcion.clear();
-            personaComboBox.clear();
+            taskField.clear();
+            actualizarLista(personaCombo.getValue());
         });
 
-        grid.setColumns("descripcion");
-        grid.addColumn(t -> t.getResponsable().getNombre() + " " + t.getResponsable().getApellido())
-             .setHeader("Responsable");
+        // Botón Ir a Personas
+        Button personasButton = new Button("Ir a Personas", click ->
+            getUI().ifPresent(ui -> ui.navigate("personas"))
+        );
 
-        Button irAPersonas = new Button("Agregar Persona", e ->
-                getUI().ifPresent(ui -> ui.navigate("personas")));
+        // Botón Eliminar seleccionados
+        Button deleteSelected = new Button("Eliminar tarea ", click -> {
+            for (int i = 0; i < checkboxes.size(); i++) {
+                if (checkboxes.get(i).getValue()) {
+                    todoRepository.delete(currentTareas.get(i));
+                }
+            }
+            actualizarLista(personaCombo.getValue());
+        });
 
-        add(descripcion, personaComboBox, addButton, irAPersonas, grid);
-        actualizarGrid();
+       
+        // Layout horizontal de inputs y botones
+        HorizontalLayout inputLayout = new HorizontalLayout(
+            taskField, addButton, deleteSelected, personasButton );
+        HorizontalLayout inputLayout2 = new HorizontalLayout( personaCombo );
+        inputLayout.setDefaultVerticalComponentAlignment(Alignment.END);
+        inputLayout.setSpacing(true);
+        inputLayout2.setDefaultVerticalComponentAlignment(Alignment.END);
+        inputLayout2.setSpacing(true);
+
+      
+        //vista 
+        setPadding(true);
+        setSpacing(true);
+        add(
+            titulo,inputLayout,inputLayout2, tareasLayout );
     }
 
-    private void actualizarGrid() {
-        grid.setItems(todoRepository.findAll());
+    private void actualizarLista(Persona responsable) {
+        tareasLayout.removeAll();
+        currentTareas.clear();
+        checkboxes.clear();
+
+        if (responsable != null) {
+            List<Todo> tareas = todoRepository.findByResponsable(responsable);
+            currentTareas.addAll(tareas);
+            for (Todo tarea : tareas) {
+                Checkbox cb = new Checkbox(tarea.getDescripcion());
+                checkboxes.add(cb);
+                tareasLayout.add(cb);
+            }
+        }
     }
 }
+
