@@ -1,6 +1,8 @@
 
 package frp.utn.edu.backend.View;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
@@ -9,9 +11,9 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.Route;
+
 import frp.utn.edu.backend.Models.Persona;
 import frp.utn.edu.backend.Repository.PersonaRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 
 @Route("personas")
 public class PersonaView extends VerticalLayout {
@@ -24,13 +26,18 @@ public class PersonaView extends VerticalLayout {
     private final TextField apellido  = new TextField("Apellido");
 
     private Persona seleccionada = null;
+  //Refresheo
+    private Runnable onPersonaGuardada;
+    public void setOnPersonaGuardada(Runnable callback) {
+        this.onPersonaGuardada = callback;
+    }
 
     @Autowired
     public PersonaView(PersonaRepository personaRepository) {
         this.personaRepository = personaRepository;
 
         
-        H2 titulo = new H2("Gestión de Personas");
+        H2 titulo = new H2("Gestion de Personas");
 
         
         grid.addColumn(Persona::getDni).setHeader("DNI");
@@ -45,15 +52,18 @@ public class PersonaView extends VerticalLayout {
         Button modificar = new Button("Modificar", e -> modificarPersona());
         Button eliminar  = new Button("Eliminar", e -> eliminarPersona());
         Button buscar    = new Button("Buscar por Nombre", e -> buscarPorNombre());
-        Button volver    = new Button("Volver a Tareas", e -> getUI().ifPresent(ui -> ui.navigate("")));
+
 
         
-        VerticalLayout formLayout = new VerticalLayout(dni, nombre, apellido);
-        formLayout.setDefaultHorizontalComponentAlignment(Alignment.START);
+        HorizontalLayout formLayout = new HorizontalLayout(dni, nombre, apellido);
+        formLayout.setDefaultVerticalComponentAlignment(Alignment.CENTER);
         formLayout.setSpacing(true);
+        dni.setWidth("150px");
+        nombre.setWidth("200px");
+        apellido.setWidth("200px");
 
         
-        HorizontalLayout buttonsLayout = new HorizontalLayout(guardar, modificar, eliminar, buscar, volver);
+        HorizontalLayout buttonsLayout = new HorizontalLayout(guardar, modificar, eliminar, buscar);
         buttonsLayout.setDefaultVerticalComponentAlignment(Alignment.END);
         buttonsLayout.setSpacing(true);
 
@@ -61,7 +71,7 @@ public class PersonaView extends VerticalLayout {
         setSpacing(true);
         add(titulo, formLayout, buttonsLayout, grid);
 
-        
+        setSizeFull();
         refreshGrid();
     }
 
@@ -85,7 +95,13 @@ public class PersonaView extends VerticalLayout {
         Notification.show("Persona guardada");
         clearForm();
         refreshGrid();
+        if (onPersonaGuardada != null) {
+            onPersonaGuardada.run();
+        }
     }
+    
+    
+   
 
     private void modificarPersona() {
         if (seleccionada == null) {
@@ -108,6 +124,9 @@ public class PersonaView extends VerticalLayout {
         Notification.show("Persona eliminada");
         clearForm();
         refreshGrid();
+        
+        if (onPersonaGuardada != null) {
+            onPersonaGuardada.run();}
     }
 
     private void buscarPorNombre() {
@@ -129,5 +148,6 @@ public class PersonaView extends VerticalLayout {
     private void refreshGrid() {
         grid.setItems(personaRepository.findAll());
     }
+  
 }
 
